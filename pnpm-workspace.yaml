@@ -1,0 +1,15 @@
+# Treat this directory as a standalone pnpm root. Without this file pnpm walks up to the
+# enclosing repository's pnpm-workspace.yaml and mixes its overrides / lockfile into this package.
+packages: []
+
+# Supply-chain hardening: refuse versions published less than 7 days ago. Settings of an
+# enclosing workspace do not apply to a standalone root, so it is set here explicitly.
+minimumReleaseAge: 10080
+
+# Do not run dependency install scripts. esbuild's postinstall (pulled in by tsup / tsx) only
+# verifies its binary, which ships in the platform-specific optionalDependencies package.
+allowBuilds:
+  esbuild: false
+
+overrides:
+  esbuild: ">=0.28.1 <0.29"

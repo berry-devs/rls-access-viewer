@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "rls-access-viewer.config.schema.json",
+  "title": "rls-access-viewer configuration",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "tags": {
+      "type": "array",
+      "description": "Short tags attached to leaf conditions whose SQL matches pattern",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "label", "pattern"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z0-9-]+$"
+          },
+          "label": {
+            "type": "string",
+            "minLength": 1
+          },
+          "pattern": {
+            "type": "string",
+            "description": "JavaScript regular expression source (RegExp)"
+          },
+          "flags": {
+            "type": "string",
+            "pattern": "^[imsu]*$"
+          },
+          "description": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

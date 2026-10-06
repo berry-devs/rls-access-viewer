@@ -1,0 +1,17 @@
+{
+  "$schema": "../schemas/rls-access-viewer.config.schema.json",
+  "tags": [
+    {
+      "id": "tenant",
+      "label": "テナント限定",
+      "pattern": "\\bcurrent_tenant_ids\\s*\\(",
+      "description": "Limits rows to the tenants of the signed-in user"
+    },
+    {
+      "id": "admin-flag",
+      "label": "admin only",
+      "pattern": "\\bis_admin\\b",
+      "flags": "i"
+    }
+  ]
+}

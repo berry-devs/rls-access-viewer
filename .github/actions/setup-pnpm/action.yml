@@ -1,0 +1,22 @@
+name: "Setup pnpm"
+description: "Set up Node.js and pnpm, then run pnpm install --frozen-lockfile"
+runs:
+  using: "composite"
+  steps:
+    - name: Set up Node.js
+      uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      with:
+        # Same version as local development; satisfies engines.node in package.json
+        node-version-file: .tool-versions
+
+    - name: Enable corepack and activate pnpm
+      # Corepack resolves pnpm from the packageManager field and verifies its sha512
+      shell: bash
+      run: |
+        corepack enable
+        pnpm --version
+
+    - name: Install dependencies
+      # minimumReleaseAge / allowBuilds in pnpm-workspace.yaml apply here as well
+      shell: bash
+      run: pnpm install --frozen-lockfile

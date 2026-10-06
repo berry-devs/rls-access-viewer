@@ -1,0 +1,191 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  # Only cancel superseded PR runs; every push to main is checked to completion
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  lint:
+    name: ESLint
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Setup pnpm and install dependencies
+        uses: ./.github/actions/setup-pnpm
+      - name: Run ESLint
+        run: pnpm lint
+
+  format:
+    name: Prettier
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Setup pnpm and install dependencies
+        uses: ./.github/actions/setup-pnpm
+      - name: Check formatting
+        run: pnpm format:check
+
+  typecheck:
+    name: Typecheck
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Setup pnpm and install dependencies
+        uses: ./.github/actions/setup-pnpm
+      - name: Run tsc
+        run: pnpm typecheck
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Setup pnpm and install dependencies
+        uses: ./.github/actions/setup-pnpm
+      - name: Build from a clean dist
+        run: |
+          rm -rf dist
+          pnpm build
+      - name: Verify the CLI entry was emitted
+        # bin in package.json points at dist/cli.js; fail if the build did not produce it
+        run: |
+          if [ ! -s dist/cli.js ]; then
+            echo "::error::dist/cli.js was not generated"
+            exit 1
+          fi
+
+  test:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Setup pnpm and install dependencies
+        uses: ./.github/actions/setup-pnpm
+      # The integration suite (pnpm test:integration) is not run here: it drops and recreates a schema
+      - name: Run unit tests
+        run: pnpm test
+
+  node-compat:
+    name: Node ${{ matrix.node }} (unit tests, installed CLI)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        # 22.0.0 is the engines.node lower bound; the others track the latest release of each line
+        node: ["22.0.0", "22", "24", "26"]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Setup pnpm and install dependencies
+        uses: ./.github/actions/setup-pnpm
+      - name: Build, pack and write a sample rules.json
+        run: |
+          pnpm build
+          pnpm pack --pack-destination "$RUNNER_TEMP"
+          tarball="$(ls "$RUNNER_TEMP"/*.tgz)"
+          echo "TARBALL=$tarball" >> "$GITHUB_ENV"
+          node --import tsx --input-type=module -e '
+            import { writeFileSync } from "node:fs";
+            import { doc, policy, table, trigger } from "./test/fixtures.ts";
+            const rules = doc({
+              tables: [
+                table({
+                  name: "items",
+                  policies: [
+                    policy({ name: "fixture_owner_reads", command: "ALL" }),
+                    policy({ name: "fixture_hide_archived", command: "SELECT", permissive: false })
+                  ],
+                  triggers: [trigger({ name: "items_check" })]
+                })
+              ]
+            });
+            writeFileSync(process.argv[1], JSON.stringify(rules));
+          ' "$RUNNER_TEMP/rules.json"
+      # Switched only after install, build and pack: Node.js 25 and later no longer bundle Corepack, which provides pnpm
+      - name: Switch to Node.js ${{ matrix.node }}
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: ${{ matrix.node }}
+          # Without it the runner's cached version is used, which may lag behind the latest release of the line
+          check-latest: true
+      - name: Check the Node.js version
+        env:
+          EXPECTED: ${{ matrix.node }}
+        run: |
+          actual="$(node --version)"
+          echo "node $actual, npm $(npm --version)"
+          case "$EXPECTED" in
+            *.*.*) [ "$actual" = "v$EXPECTED" ] ;;
+            *) [[ "$actual" == "v$EXPECTED."* ]] ;;
+          esac || {
+            echo "::error::expected Node.js $EXPECTED, got $actual"
+            exit 1
+          }
+      - name: Run unit tests
+        # Same command as `pnpm test`, run by the matrix Node.js directly
+        run: node --import tsx --test test/*.test.ts
+      - name: Install the packed CLI with npm
+        # Reproduces a user's install: this Node.js's npm checks engines, installs pg and links the bin.
+        # No lockfile and a fresh cache, so nothing from the pnpm install above is reused
+        run: |
+          app="$RUNNER_TEMP/app"
+          mkdir "$app"
+          cd "$app"
+          npm init -y >/dev/null
+          npm install --ignore-scripts --engine-strict --no-package-lock --no-audit --no-fund \
+            --cache "$RUNNER_TEMP/npm-cache" "$TARBALL"
+          echo "CLI=$app/node_modules/.bin/rls-access-viewer" >> "$GITHUB_ENV"
+      - name: Run the installed CLI
+        run: |
+          "$CLI" --help
+
+          "$CLI" render --in "$RUNNER_TEMP/rules.json" --out "$RUNNER_TEMP/index.html"
+          grep -q "fixture_owner_reads" "$RUNNER_TEMP/index.html"
+          grep -q 'http-equiv="Content-Security-Policy"' "$RUNNER_TEMP/index.html"
+
+          # A closed port on loopback: the connection must fail with exit code 2 and keep the URL out of the output
+          url="postgresql://u@127.0.0.1:1/postgres"
+          set +e
+          out="$("$CLI" extract --db-url "$url" --out "$RUNNER_TEMP/extract.json" 2>&1)"
+          code=$?
+          set -e
+          echo "$out"
+          if [ "$code" -ne 2 ]; then
+            echo "::error::extract exited with $code, expected 2"
+            exit 1
+          fi
+          if grep -qF "$url" <<<"$out" || grep -qE "postgres(ql)?://" <<<"$out"; then
+            echo "::error::extract printed the connection string"
+            exit 1
+          fi

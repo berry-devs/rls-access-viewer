@@ -1,0 +1,10 @@
+# Line length to wrap at
+printWidth: 120
+# Spaces per indentation level
+tabWidth: 2
+# Use double quotes for strings
+singleQuote: false
+# No trailing commas
+trailingComma: none
+# Semicolons at the end of statements
+semi: true

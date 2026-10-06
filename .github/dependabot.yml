@@ -1,0 +1,10 @@
+version: 2
+updates:
+  # Keeps the SHA-pinned actions up to date
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+    # Same 7-day age gate as minimumReleaseAge in pnpm-workspace.yaml
+    cooldown:
+      default-days: 7

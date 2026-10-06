@@ -1,0 +1,15 @@
+node_modules/
+dist/
+# Generated output (default directory of extract / render / generate) and test work directories
+out/
+
+# Registry credentials and local environment
+.npmrc
+.env*
+
+# OS / packaging artifacts
+.DS_Store
+*.tgz
+
+# Local results written by Claude Code skills
+.claude/results/

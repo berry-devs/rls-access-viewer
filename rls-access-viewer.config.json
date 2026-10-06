@@ -1,0 +1,50 @@
+{
+  "$schema": "./schemas/rls-access-viewer.config.schema.json",
+  "tags": [
+    {
+      "id": "self",
+      "label": "own rows",
+      "pattern": "\\bauth\\.uid\\s*\\(\\s*\\)",
+      "description": "Compares a column with the signed-in user (auth.uid())"
+    },
+    {
+      "id": "mfa",
+      "label": "MFA (aal2)",
+      "pattern": "\\bauth\\.jwt\\s*\\(\\s*\\)\\s*->>\\s*'aal'",
+      "description": "Checks the authenticator assurance level in the JWT"
+    },
+    {
+      "id": "jwt-claim",
+      "label": "JWT claim",
+      "pattern": "\\bauth\\.jwt\\s*\\(",
+      "description": "Reads a claim from the request JWT"
+    },
+    {
+      "id": "auth-role",
+      "label": "auth role",
+      "pattern": "\\bauth\\.role\\s*\\(",
+      "description": "Checks the request role (deprecated in favour of the TO clause)"
+    },
+    {
+      "id": "soft-delete",
+      "label": "excludes soft-deleted",
+      "pattern": "\\bdeleted\\s+IS\\s+(FALSE|NOT\\s+TRUE)\\b|\\bNOT\\s+\\(?\\s*(\\w+\\.)?deleted\\b|\\bdeleted\\s*=\\s*false\\b|\\bdeleted_at\\s+IS\\s+NULL\\b",
+      "flags": "i",
+      "description": "Rows marked as deleted are excluded"
+    },
+    {
+      "id": "always",
+      "label": "unconditional",
+      "pattern": "^\\s*\\(?\\s*true\\s*\\)?\\s*$",
+      "flags": "i",
+      "description": "Always true: every row, for the roles the policy applies to"
+    },
+    {
+      "id": "never",
+      "label": "never",
+      "pattern": "^\\s*\\(?\\s*false\\s*\\)?\\s*$",
+      "flags": "i",
+      "description": "Always false: the policy never allows anything"
+    }
+  ]
+}

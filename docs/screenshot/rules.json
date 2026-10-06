@@ -1,0 +1,1048 @@
+{
+  "formatVersion": 1,
+  "generatedAt": "2026-10-05T00:00:00.000Z",
+  "source": {
+    "schema": "public",
+    "serverVersion": "17.6"
+  },
+  "roles": [
+    {
+      "name": "anon",
+      "bypassRls": false,
+      "superuser": false
+    },
+    {
+      "name": "authenticated",
+      "bypassRls": false,
+      "superuser": false
+    },
+    {
+      "name": "service_role",
+      "bypassRls": true,
+      "superuser": false
+    }
+  ],
+  "tables": [
+    {
+      "kind": "table",
+      "isPartition": false,
+      "rls": {
+        "enabled": true,
+        "forced": false
+      },
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": false
+        },
+        {
+          "name": "username",
+          "type": "text",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": false
+        },
+        {
+          "name": "avatar_url",
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": false
+        },
+        {
+          "name": "banned",
+          "type": "boolean",
+          "notNull": true,
+          "default": "false",
+          "identity": null,
+          "generated": false
+        }
+      ],
+      "policies": [
+        {
+          "permissive": true,
+          "roles": [
+            "public"
+          ],
+          "using": "true",
+          "withCheck": null,
+          "name": "Profiles are viewable by everyone",
+          "command": "SELECT"
+        },
+        {
+          "permissive": true,
+          "roles": [
+            "authenticated"
+          ],
+          "using": "(( SELECT auth.uid() AS uid) = id)",
+          "withCheck": "(( SELECT auth.uid() AS uid) = id)",
+          "name": "Users update their own profile",
+          "command": "UPDATE"
+        }
+      ],
+      "triggers": [],
+      "constraints": [
+        {
+          "kind": "primary",
+          "name": "profiles_pkey",
+          "columns": [
+            "id"
+          ],
+          "definition": "PRIMARY KEY (id)"
+        },
+        {
+          "kind": "foreign",
+          "name": "profiles_id_fkey",
+          "columns": [
+            "id"
+          ],
+          "references": {
+            "schema": "auth",
+            "table": "users",
+            "columns": [
+              "id"
+            ]
+          },
+          "onDelete": "CASCADE",
+          "onUpdate": "NO ACTION",
+          "definition": "FOREIGN KEY (id) REFERENCES auth.users(id) ON DELETE CASCADE"
+        }
+      ],
+      "grants": [
+        {
+          "grantee": "anon",
+          "privilege": "SELECT",
+          "columns": null
+        },
+        {
+          "grantee": "anon",
+          "privilege": "REFERENCES",
+          "columns": null
+        },
+        {
+          "grantee": "anon",
+          "privilege": "TRIGGER",
+          "columns": null
+        },
+        {
+          "grantee": "authenticated",
+          "privilege": "SELECT",
+          "columns": null
+        },
+        {
+          "grantee": "authenticated",
+          "privilege": "INSERT",
+          "columns": null
+        },
+        {
+          "grantee": "authenticated",
+          "privilege": "UPDATE",
+          "columns": null
+        },
+        {
+          "grantee": "authenticated",
+          "privilege": "DELETE",
+          "columns": null
+        },
+        {
+          "grantee": "authenticated",
+          "privilege": "TRUNCATE",
+          "columns": null
+        },
+        {
+          "grantee": "authenticated",
+          "privilege": "REFERENCES",
+          "columns": null
+        },
+        {
+          "grantee": "authenticated",
+          "privilege": "TRIGGER",
+          "columns": null
+        },
+        {
+          "grantee": "service_role",
+          "privilege": "SELECT",
+          "columns": null
+        },
+        {
+          "grantee": "service_role",
+          "privilege": "INSERT",
+          "columns": null
+        },
+        {
+          "grantee": "service_role",
+          "privilege": "UPDATE",
+          "columns": null
+        },
+        {
+          "grantee": "service_role",
+          "privilege": "DELETE",
+          "columns": null
+        },
+        {
+          "grantee": "service_role",
+          "privilege": "TRUNCATE",
+          "columns": null
+        },
+        {
+          "grantee": "service_role",
+          "privilege": "REFERENCES",
+          "columns": null
+        },
+        {
+          "grantee": "service_role",
+          "privilege": "TRIGGER",
+          "columns": null
+        }
+      ],
+      "name": "profiles"
+    },
+    {
+      "kind": "table",
+      "isPartition": false,
+      "rls": {
+        "enabled": true,
+        "forced": false
+      },
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "notNull": true,
+          "default": null,
+          "identity": "ALWAYS",
+          "generated": false
+        },
+        {
+          "name": "author_id",
+          "type": "uuid",
+          "notNull": true,
+          "default": "auth.uid()",
+          "identity": null,
+          "generated": false
+        },
+        {
+          "name": "title",
+          "type": "text",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": false
+        },
+        {
+          "name": "body",
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": false
+        },
+        {
+          "name": "published",
+          "type": "boolean",
+          "notNull": true,
+          "default": "false",
+          "identity": null,
+          "generated": false
+        },
+        {
+          "name": "comment_count",
+          "type": "integer",
+          "notNull": true,
+          "default": "0",
+          "identity": null,
+          "generated": false
+        }
+      ],
+      "policies": [
+        {
+          "permissive": true,
+          "roles": [
+            "anon",
+            "authenticated"
+          ],
+          "using": "(published = true)",
+          "withCheck": null,
+          "name": "Published posts are readable",
+          "command": "SELECT"
+        },
+        {
+          "permissive": true,
+          "roles": [
+            "authenticated"
+          ],
+          "using": "(( SELECT auth.uid() AS uid) = author_id)",
+          "withCheck": "(( SELECT auth.uid() AS uid) = author_id)",
+          "name": "Authors manage their posts",
+          "command": "ALL"
+        },
+        {
+          "permissive": false,
+          "roles": [
+            "authenticated"
+          ],
+          "using": "(NOT is_banned(( SELECT auth.uid() AS uid)))",
+          "withCheck": "(NOT is_banned(( SELECT auth.uid() AS uid)))",
+          "name": "Banned users cannot write",
+          "command": "ALL"
+        }
+      ],
+      "triggers": [
+        {
+          "timing": "BEFORE",
+          "level": "ROW",
+          "events": [
+            "INSERT",
+            "UPDATE"
+          ],
+          "updateColumns": [],
+          "when": null,
+          "function": {
+            "schema": "public",
+            "name": "validate_post",
+            "securityDefiner": false
+          },
+          "enabled": "O",
+          "isConstraintTrigger": false,
+          "definition": "CREATE TRIGGER posts_validate BEFORE INSERT OR UPDATE ON public.posts FOR EACH ROW EXECUTE FUNCTION validate_post()",
+          "name": "posts_validate"
+        }
+      ],
+      "constraints": [
+        {
+          "kind": "primary",
+          "name": "posts_pkey",
+          "columns": [
+            "id"
+          ],
+          "definition": "PRIMARY KEY (id)"
+        },
+        {
+          "kind": "foreign",
+          "name": "posts_author_id_fkey",
+          "columns": [
+            "author_id"
+          ],
+          "references": {
+            "schema": "public",
+            "table": "profiles",
+            "columns": [
+              "id"
+            ]
+          },
+          "onDelete": "CASCADE",
+          "onUpdate": "NO ACTION",
+          "definition": "FOREIGN KEY (author_id) REFERENCES profiles(id) ON DELETE CASCADE"
+        }
+      ],
+      "grants": [
+        {
+          "grantee": "anon",
+          "privilege": "SELECT",
+          "columns": null
+        },
+        {
+          "grantee": "anon",
+          "privilege": "REFERENCES",
+          "columns": null
+        },
+        {
+          "grantee": "anon",
+          "privilege": "TRIGGER",
+          "columns": null
+        },
+        {
+          "grantee": "authenticated",
+          "privilege": "SELECT",
+          "columns": null
+        },
+        {
+          "grantee": "authenticated",
+          "privilege": "INSERT",
+          "columns": null
+        },
+        {
+          "grantee": "authenticated",
+          "privilege": "UPDATE",
+          "columns": null
+        },
+        {
+          "grantee": "authenticated",
+          "privilege": "DELETE",
+          "columns": null
+        },
+        {
+          "grantee": "authenticated",
+          "privilege": "TRUNCATE",
+          "columns": null
+        },
+        {
+          "grantee": "authenticated",
+          "privilege": "REFERENCES",
+          "columns": null
+        },
+        {
+          "grantee": "authenticated",
+          "privilege": "TRIGGER",
+          "columns": null
+        },
+        {
+          "grantee": "service_role",
+          "privilege": "SELECT",
+          "columns": null
+        },
+        {
+          "grantee": "service_role",
+          "privilege": "INSERT",
+          "columns": null
+        },
+        {
+          "grantee": "service_role",
+          "privilege": "UPDATE",
+          "columns": null
+        },
+        {
+          "grantee": "service_role",
+          "privilege": "DELETE",
+          "columns": null
+        },
+        {
+          "grantee": "service_role",
+          "privilege": "TRUNCATE",
+          "columns": null
+        },
+        {
+          "grantee": "service_role",
+          "privilege": "REFERENCES",
+          "columns": null
+        },
+        {
+          "grantee": "service_role",
+          "privilege": "TRIGGER",
+          "columns": null
+        }
+      ],
+      "name": "posts"
+    },
+    {
+      "kind": "table",
+      "isPartition": false,
+      "rls": {
+        "enabled": true,
+        "forced": false
+      },
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "notNull": true,
+          "default": null,
+          "identity": "ALWAYS",
+          "generated": false
+        },
+        {
+          "name": "post_id",
+          "type": "bigint",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": false
+        },
+        {
+          "name": "author_id",
+          "type": "uuid",
+          "notNull": false,
+          "default": "auth.uid()",
+          "identity": null,
+          "generated": false
+        },
+        {
+          "name": "body",
+          "type": "text",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": false
+        }
+      ],
+      "policies": [
+        {
+          "permissive": true,
+          "roles": [
+            "anon",
+            "authenticated"
+          ],
+          "using": "(EXISTS ( SELECT 1\n   FROM posts p\n  WHERE ((p.id = comments.post_id) AND p.published)))",
+          "withCheck": null,
+          "name": "Comments on published posts are readable",
+          "command": "SELECT"
+        },
+        {
+          "permissive": true,
+          "roles": [
+            "authenticated"
+          ],
+          "using": null,
+          "withCheck": "(( SELECT auth.uid() AS uid) = author_id)",
+          "name": "Users comment as themselves",
+          "command": "INSERT"
+        },
+        {
+          "permissive": true,
+          "roles": [
+            "authenticated"
+          ],
+          "using": "(( SELECT auth.uid() AS uid) = author_id)",
+          "withCheck": null,
+          "name": "Users delete their comments",
+          "command": "DELETE"
+        }
+      ],
+      "triggers": [
+        {
+          "timing": "AFTER",
+          "level": "ROW",
+          "events": [
+            "INSERT",
+            "DELETE"
+          ],
+          "updateColumns": [],
+          "when": null,
+          "function": {
+            "schema": "public",
+            "name": "update_comment_count",
+            "securityDefiner": true
+          },
+          "enabled": "O",
+          "isConstraintTrigger": false,
+          "definition": "CREATE TRIGGER comments_count AFTER INSERT OR DELETE ON public.comments FOR EACH ROW EXECUTE FUNCTION update_comment_count()",
+          "name": "comments_count"
+        }
+      ],
+      "constraints": [
+        {
+          "kind": "primary",
+          "name": "comments_pkey",
+          "columns": [
+            "id"
+          ],
+          "definition": "PRIMARY KEY (id)"
+        },
+        {
+          "kind": "foreign",
+          "name": "comments_post_id_fkey",
+          "columns": [
+            "post_id"
+          ],
+          "references": {
+            "schema": "public",
+            "table": "posts",
+            "columns": [
+              "id"
+            ]
+          },
+          "onDelete": "CASCADE",
+          "onUpdate": "NO ACTION",
+          "definition": "FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE"
+        },
+        {
+          "kind": "foreign",
+          "name": "comments_author_id_fkey",
+          "columns": [
+            "author_id"
+          ],
+          "references": {
+            "schema": "public",
+            "table": "profiles",
+            "columns": [
+              "id"
+            ]
+          },
+          "onDelete": "SET NULL",
+          "onUpdate": "NO ACTION",
+          "definition": "FOREIGN KEY (author_id) REFERENCES profiles(id) ON DELETE SET NULL"
+        }
+      ],
+      "grants": [
+        {
+          "grantee": "anon",
+          "privilege": "SELECT",
+          "columns": null
+        },
+        {
+          "grantee": "anon",
+          "privilege": "REFERENCES",
+          "columns": null
+        },
+        {
+          "grantee": "anon",
+          "privilege": "TRIGGER",
+          "columns": null
+        },
+        {
+          "grantee": "authenticated",
+          "privilege": "SELECT",
+          "columns": null
+        },
+        {
+          "grantee": "authenticated",
+          "privilege": "INSERT",
+          "columns": null
+        },
+        {
+          "grantee": "authenticated",
+          "privilege": "UPDATE",
+          "columns": null
+        },
+        {
+          "grantee": "authenticated",
+          "privilege": "DELETE",
+          "columns": null
+        },
+        {
+          "grantee": "authenticated",
+          "privilege": "TRUNCATE",
+          "columns": null
+        },
+        {
+          "grantee": "authenticated",
+          "privilege": "REFERENCES",
+          "columns": null
+        },
+        {
+          "grantee": "authenticated",
+          "privilege": "TRIGGER",
+          "columns": null
+        },
+        {
+          "grantee": "service_role",
+          "privilege": "SELECT",
+          "columns": null
+        },
+        {
+          "grantee": "service_role",
+          "privilege": "INSERT",
+          "columns": null
+        },
+        {
+          "grantee": "service_role",
+          "privilege": "UPDATE",
+          "columns": null
+        },
+        {
+          "grantee": "service_role",
+          "privilege": "DELETE",
+          "columns": null
+        },
+        {
+          "grantee": "service_role",
+          "privilege": "TRUNCATE",
+          "columns": null
+        },
+        {
+          "grantee": "service_role",
+          "privilege": "REFERENCES",
+          "columns": null
+        },
+        {
+          "grantee": "service_role",
+          "privilege": "TRIGGER",
+          "columns": null
+        }
+      ],
+      "name": "comments"
+    }
+  ],
+  "views": [
+    {
+      "name": "published_posts",
+      "kind": "view",
+      "securityInvoker": true,
+      "securityBarrier": false,
+      "definition": " SELECT id, author_id, title\n   FROM posts\n  WHERE published;",
+      "baseRelations": [
+        {
+          "schema": "public",
+          "name": "posts"
+        }
+      ],
+      "grants": [
+        {
+          "grantee": "anon",
+          "privilege": "SELECT",
+          "columns": null
+        },
+        {
+          "grantee": "anon",
+          "privilege": "INSERT",
+          "columns": null
+        },
+        {
+          "grantee": "anon",
+          "privilege": "UPDATE",
+          "columns": null
+        },
+        {
+          "grantee": "anon",
+          "privilege": "DELETE",
+          "columns": null
+        },
+        {
+          "grantee": "anon",
+          "privilege": "TRUNCATE",
+          "columns": null
+        },
+        {
+          "grantee": "anon",
+          "privilege": "REFERENCES",
+          "columns": null
+        },
+        {
+          "grantee": "anon",
+          "privilege": "TRIGGER",
+          "columns": null
+        },
+        {
+          "grantee": "authenticated",
+          "privilege": "SELECT",
+          "columns": null
+        },
+        {
+          "grantee": "authenticated",
+          "privilege": "INSERT",
+          "columns": null
+        },
+        {
+          "grantee": "authenticated",
+          "privilege": "UPDATE",
+          "columns": null
+        },
+        {
+          "grantee": "authenticated",
+          "privilege": "DELETE",
+          "columns": null
+        },
+        {
+          "grantee": "authenticated",
+          "privilege": "TRUNCATE",
+          "columns": null
+        },
+        {
+          "grantee": "authenticated",
+          "privilege": "REFERENCES",
+          "columns": null
+        },
+        {
+          "grantee": "authenticated",
+          "privilege": "TRIGGER",
+          "columns": null
+        },
+        {
+          "grantee": "service_role",
+          "privilege": "SELECT",
+          "columns": null
+        },
+        {
+          "grantee": "service_role",
+          "privilege": "INSERT",
+          "columns": null
+        },
+        {
+          "grantee": "service_role",
+          "privilege": "UPDATE",
+          "columns": null
+        },
+        {
+          "grantee": "service_role",
+          "privilege": "DELETE",
+          "columns": null
+        },
+        {
+          "grantee": "service_role",
+          "privilege": "TRUNCATE",
+          "columns": null
+        },
+        {
+          "grantee": "service_role",
+          "privilege": "REFERENCES",
+          "columns": null
+        },
+        {
+          "grantee": "service_role",
+          "privilege": "TRIGGER",
+          "columns": null
+        }
+      ]
+    }
+  ],
+  "functions": [
+    {
+      "identityArguments": "uid uuid",
+      "returns": "boolean",
+      "kind": "function",
+      "language": "sql",
+      "volatility": "STABLE",
+      "securityDefiner": true,
+      "searchPath": "\"\"",
+      "executableBy": {
+        "anon": false,
+        "authenticated": true
+      },
+      "comment": null,
+      "name": "is_banned",
+      "definition": "CREATE OR REPLACE FUNCTION public.is_banned(uid uuid)\n RETURNS boolean\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO ''\nAS $function$\n  SELECT coalesce((SELECT banned FROM public.profiles WHERE id = uid), false)\n$function$\n"
+    },
+    {
+      "identityArguments": "",
+      "returns": "trigger",
+      "kind": "function",
+      "language": "plpgsql",
+      "volatility": "VOLATILE",
+      "securityDefiner": false,
+      "searchPath": "\"\"",
+      "executableBy": {
+        "anon": false,
+        "authenticated": true
+      },
+      "comment": null,
+      "name": "validate_post",
+      "definition": "CREATE OR REPLACE FUNCTION public.validate_post()\n RETURNS trigger\n LANGUAGE plpgsql\n SET search_path TO ''\nAS $function$\nBEGIN\n  -- Titles are shown in lists, so keep them short\n  IF length(NEW.title) > 200 THEN\n    RAISE EXCEPTION 'title is too long' USING ERRCODE = 'check_violation';\n  END IF;\n  IF TG_OP = 'UPDATE' AND NEW.author_id IS DISTINCT FROM OLD.author_id THEN\n    RAISE EXCEPTION 'author_id cannot be changed';\n  END IF;\n  RETURN NEW;\nEND;\n$function$\n"
+    },
+    {
+      "identityArguments": "",
+      "returns": "trigger",
+      "kind": "function",
+      "language": "plpgsql",
+      "volatility": "VOLATILE",
+      "securityDefiner": true,
+      "searchPath": "\"\"",
+      "executableBy": {
+        "anon": false,
+        "authenticated": true
+      },
+      "comment": null,
+      "name": "update_comment_count",
+      "definition": "CREATE OR REPLACE FUNCTION public.update_comment_count()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO ''\nAS $function$\nBEGIN\n  IF TG_OP = 'INSERT' THEN\n    UPDATE public.posts SET comment_count = comment_count + 1 WHERE id = NEW.post_id;\n  ELSE\n    UPDATE public.posts SET comment_count = comment_count - 1 WHERE id = OLD.post_id;\n  END IF;\n  RETURN NULL;\nEND;\n$function$\n"
+    }
+  ],
+  "externalForeignKeys": [],
+  "eventTriggers": [],
+  "excluded": {
+    "extensionOwnedFunctions": 0,
+    "extensionOwnedRelations": 0,
+    "eventTriggers": []
+  },
+  "storage": {
+    "buckets": [
+      {
+        "id": "avatars",
+        "name": "avatars",
+        "public": true,
+        "fileSizeLimit": 1048576,
+        "allowedMimeTypes": [
+          "image/png",
+          "image/jpeg"
+        ]
+      },
+      {
+        "id": "attachments",
+        "name": "attachments",
+        "public": false,
+        "fileSizeLimit": null,
+        "allowedMimeTypes": null
+      }
+    ],
+    "bucketsReadable": true,
+    "bucketsFiltered": false,
+    "objects": {
+      "kind": "table",
+      "isPartition": false,
+      "rls": {
+        "enabled": true,
+        "forced": false
+      },
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": false
+        },
+        {
+          "name": "bucket_id",
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": false
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": false
+        },
+        {
+          "name": "owner_id",
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": false
+        }
+      ],
+      "policies": [
+        {
+          "permissive": true,
+          "roles": [
+            "public"
+          ],
+          "using": "(bucket_id = 'avatars'::text)",
+          "withCheck": null,
+          "name": "Avatar images are publicly accessible",
+          "command": "SELECT"
+        },
+        {
+          "permissive": true,
+          "roles": [
+            "authenticated"
+          ],
+          "using": null,
+          "withCheck": "((bucket_id = 'avatars'::text) AND ((storage.foldername(name))[1] = (( SELECT auth.uid() AS uid))::text))",
+          "name": "Users upload their own avatar",
+          "command": "INSERT"
+        },
+        {
+          "permissive": true,
+          "roles": [
+            "authenticated"
+          ],
+          "using": "((bucket_id = 'attachments'::text) AND (owner_id = (( SELECT auth.uid() AS uid))::text))",
+          "withCheck": null,
+          "name": "Users read their attachments",
+          "command": "SELECT"
+        }
+      ],
+      "triggers": [],
+      "constraints": [],
+      "grants": [
+        {
+          "grantee": "anon",
+          "privilege": "SELECT",
+          "columns": null
+        },
+        {
+          "grantee": "anon",
+          "privilege": "INSERT",
+          "columns": null
+        },
+        {
+          "grantee": "anon",
+          "privilege": "UPDATE",
+          "columns": null
+        },
+        {
+          "grantee": "anon",
+          "privilege": "DELETE",
+          "columns": null
+        },
+        {
+          "grantee": "anon",
+          "privilege": "TRUNCATE",
+          "columns": null
+        },
+        {
+          "grantee": "anon",
+          "privilege": "REFERENCES",
+          "columns": null
+        },
+        {
+          "grantee": "anon",
+          "privilege": "TRIGGER",
+          "columns": null
+        },
+        {
+          "grantee": "authenticated",
+          "privilege": "SELECT",
+          "columns": null
+        },
+        {
+          "grantee": "authenticated",
+          "privilege": "INSERT",
+          "columns": null
+        },
+        {
+          "grantee": "authenticated",
+          "privilege": "UPDATE",
+          "columns": null
+        },
+        {
+          "grantee": "authenticated",
+          "privilege": "DELETE",
+          "columns": null
+        },
+        {
+          "grantee": "authenticated",
+          "privilege": "TRUNCATE",
+          "columns": null
+        },
+        {
+          "grantee": "authenticated",
+          "privilege": "REFERENCES",
+          "columns": null
+        },
+        {
+          "grantee": "authenticated",
+          "privilege": "TRIGGER",
+          "columns": null
+        },
+        {
+          "grantee": "service_role",
+          "privilege": "SELECT",
+          "columns": null
+        },
+        {
+          "grantee": "service_role",
+          "privilege": "INSERT",
+          "columns": null
+        },
+        {
+          "grantee": "service_role",
+          "privilege": "UPDATE",
+          "columns": null
+        },
+        {
+          "grantee": "service_role",
+          "privilege": "DELETE",
+          "columns": null
+        },
+        {
+          "grantee": "service_role",
+          "privilege": "TRUNCATE",
+          "columns": null
+        },
+        {
+          "grantee": "service_role",
+          "privilege": "REFERENCES",
+          "columns": null
+        },
+        {
+          "grantee": "service_role",
+          "privilege": "TRIGGER",
+          "columns": null
+        }
+      ],
+      "name": "objects"
+    }
+  }
+}

@@ -1,0 +1,794 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "rules.schema.json",
+  "title": "rls-access-viewer rules.json",
+  "description": "Catalog facts extracted by `rls-access-viewer extract` and consumed by `render`. Secrets are redacted as [REDACTED].",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "formatVersion",
+    "generatedAt",
+    "source",
+    "roles",
+    "tables",
+    "views",
+    "functions",
+    "externalForeignKeys",
+    "eventTriggers",
+    "excluded"
+  ],
+  "$defs": {
+    "grant": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["grantee", "privilege", "columns"],
+      "properties": {
+        "grantee": {
+          "type": "string"
+        },
+        "privilege": {
+          "type": "string"
+        },
+        "columns": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          ]
+        }
+      }
+    },
+    "constraint": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "name", "columns", "definition"],
+          "properties": {
+            "kind": {
+              "enum": ["primary", "unique", "exclusion", "check"]
+            },
+            "name": {
+              "type": "string"
+            },
+            "columns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "definition": {
+              "type": "string"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "name", "columns", "definition", "references", "onDelete", "onUpdate"],
+          "properties": {
+            "kind": {
+              "const": "foreign"
+            },
+            "name": {
+              "type": "string"
+            },
+            "columns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "definition": {
+              "type": "string"
+            },
+            "references": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["schema", "table", "columns"],
+              "properties": {
+                "schema": {
+                  "type": "string"
+                },
+                "table": {
+                  "type": "string"
+                },
+                "columns": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "onDelete": {
+              "enum": ["NO ACTION", "RESTRICT", "CASCADE", "SET NULL", "SET DEFAULT"]
+            },
+            "onUpdate": {
+              "enum": ["NO ACTION", "RESTRICT", "CASCADE", "SET NULL", "SET DEFAULT"]
+            }
+          }
+        }
+      ]
+    },
+    "guardPathElement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "sql", "notTaken"],
+      "properties": {
+        "kind": {
+          "enum": ["IF", "ELSIF", "ELSE", "WHEN", "LOOP", "EXCEPTION WHEN"]
+        },
+        "sql": {
+          "type": ["string", "null"]
+        },
+        "notTaken": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "subject": {
+          "type": "string"
+        },
+        "comment": {
+          "type": "string"
+        }
+      }
+    },
+    "functionAnalysis": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "reason",
+        "guards",
+        "earlyReturns",
+        "sideEffects",
+        "newColumns",
+        "oldColumns",
+        "changeCheckedColumns",
+        "calledFunctions",
+        "headerComments",
+        "dynamicSql",
+        "unparsedCount"
+      ],
+      "properties": {
+        "status": {
+          "enum": ["analyzed", "partial", "failed", "unsupported"]
+        },
+        "reason": {
+          "type": ["string", "null"]
+        },
+        "guards": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["path", "message", "arguments", "errcode", "detail", "hint", "statement"],
+            "properties": {
+              "path": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/guardPathElement"
+                }
+              },
+              "message": {
+                "type": ["string", "null"]
+              },
+              "arguments": {
+                "type": ["string", "null"]
+              },
+              "errcode": {
+                "type": ["string", "null"]
+              },
+              "detail": {
+                "type": ["string", "null"]
+              },
+              "hint": {
+                "type": ["string", "null"]
+              },
+              "statement": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "earlyReturns": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["path", "statement"],
+            "properties": {
+              "path": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/guardPathElement"
+                }
+              },
+              "statement": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "sideEffects": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["operation", "schema", "name"],
+            "properties": {
+              "operation": {
+                "enum": ["INSERT", "UPDATE", "DELETE", "MERGE", "TRUNCATE", "PERFORM"]
+              },
+              "schema": {
+                "type": ["string", "null"]
+              },
+              "name": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "newColumns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "oldColumns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "changeCheckedColumns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "calledFunctions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "headerComments": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "dynamicSql": {
+          "type": "boolean"
+        },
+        "unparsedCount": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "table": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "kind", "isPartition", "rls", "columns", "policies", "triggers", "constraints", "grants"],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "kind": {
+          "enum": ["table", "partitioned"]
+        },
+        "isPartition": {
+          "type": "boolean"
+        },
+        "rls": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["enabled", "forced"],
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "forced": {
+              "type": "boolean"
+            }
+          }
+        },
+        "columns": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "type", "notNull", "default", "identity", "generated"],
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string"
+              },
+              "notNull": {
+                "type": "boolean"
+              },
+              "default": {
+                "type": ["string", "null"]
+              },
+              "identity": {
+                "enum": ["ALWAYS", "BY DEFAULT", null]
+              },
+              "generated": {
+                "type": "boolean"
+              }
+            }
+          }
+        },
+        "policies": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "command", "permissive", "roles", "using", "withCheck"],
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "command": {
+                "enum": ["SELECT", "INSERT", "UPDATE", "DELETE", "ALL"]
+              },
+              "permissive": {
+                "type": "boolean"
+              },
+              "roles": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "\"public\" applies to every role"
+              },
+              "using": {
+                "type": ["string", "null"]
+              },
+              "withCheck": {
+                "type": ["string", "null"]
+              }
+            }
+          }
+        },
+        "triggers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "name",
+              "timing",
+              "level",
+              "events",
+              "updateColumns",
+              "when",
+              "function",
+              "enabled",
+              "isConstraintTrigger",
+              "definition"
+            ],
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "timing": {
+                "enum": ["BEFORE", "AFTER", "INSTEAD OF"]
+              },
+              "level": {
+                "enum": ["ROW", "STATEMENT"]
+              },
+              "events": {
+                "type": "array",
+                "items": {
+                  "enum": ["INSERT", "UPDATE", "DELETE", "TRUNCATE"]
+                }
+              },
+              "updateColumns": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "when": {
+                "type": ["string", "null"]
+              },
+              "function": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["schema", "name", "securityDefiner"],
+                "properties": {
+                  "schema": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "securityDefiner": {
+                    "type": "boolean"
+                  }
+                }
+              },
+              "enabled": {
+                "enum": ["O", "D", "R", "A"]
+              },
+              "isConstraintTrigger": {
+                "type": "boolean"
+              },
+              "definition": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "constraints": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/constraint"
+          }
+        },
+        "grants": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/grant"
+          }
+        }
+      }
+    },
+    "bucket": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "public", "fileSizeLimit", "allowedMimeTypes"],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "public": {
+          "type": "boolean"
+        },
+        "fileSizeLimit": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "integer",
+              "minimum": 0
+            }
+          ]
+        },
+        "allowedMimeTypes": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          ]
+        }
+      }
+    }
+  },
+  "properties": {
+    "formatVersion": {
+      "const": 1
+    },
+    "generatedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema", "serverVersion"],
+      "properties": {
+        "schema": {
+          "type": "string"
+        },
+        "serverVersion": {
+          "type": "string"
+        }
+      }
+    },
+    "roles": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "bypassRls", "superuser"],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "bypassRls": {
+            "type": "boolean"
+          },
+          "superuser": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "tables": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/table"
+      }
+    },
+    "views": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "kind", "securityInvoker", "securityBarrier", "definition", "baseRelations", "grants"],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "kind": {
+            "enum": ["view", "materialized"]
+          },
+          "securityInvoker": {
+            "type": "boolean"
+          },
+          "securityBarrier": {
+            "type": "boolean"
+          },
+          "definition": {
+            "type": "string"
+          },
+          "baseRelations": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["schema", "name"],
+              "properties": {
+                "schema": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "grants": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/grant"
+            }
+          }
+        }
+      }
+    },
+    "functions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "identityArguments",
+          "returns",
+          "kind",
+          "language",
+          "volatility",
+          "securityDefiner",
+          "searchPath",
+          "executableBy",
+          "definition"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "identityArguments": {
+            "type": "string"
+          },
+          "returns": {
+            "type": "string"
+          },
+          "kind": {
+            "enum": ["function", "procedure", "aggregate", "window"]
+          },
+          "language": {
+            "type": "string"
+          },
+          "volatility": {
+            "enum": ["IMMUTABLE", "STABLE", "VOLATILE"]
+          },
+          "securityDefiner": {
+            "type": "boolean"
+          },
+          "searchPath": {
+            "type": ["string", "null"]
+          },
+          "executableBy": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["anon", "authenticated"],
+            "properties": {
+              "anon": {
+                "type": "boolean"
+              },
+              "authenticated": {
+                "type": "boolean"
+              }
+            }
+          },
+          "definition": {
+            "type": ["string", "null"]
+          },
+          "comment": {
+            "type": ["string", "null"]
+          },
+          "analysis": {
+            "$ref": "#/$defs/functionAnalysis",
+            "description": "Deterministic summary of the body; the definition is authoritative"
+          }
+        }
+      }
+    },
+    "externalForeignKeys": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kind", "name", "columns", "definition", "references", "onDelete", "onUpdate", "from"],
+        "properties": {
+          "kind": {
+            "const": "foreign"
+          },
+          "name": {
+            "type": "string"
+          },
+          "columns": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "definition": {
+            "type": "string"
+          },
+          "references": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["schema", "table", "columns"],
+            "properties": {
+              "schema": {
+                "type": "string"
+              },
+              "table": {
+                "type": "string"
+              },
+              "columns": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "onDelete": {
+            "enum": ["NO ACTION", "RESTRICT", "CASCADE", "SET NULL", "SET DEFAULT"]
+          },
+          "onUpdate": {
+            "enum": ["NO ACTION", "RESTRICT", "CASCADE", "SET NULL", "SET DEFAULT"]
+          },
+          "from": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["schema", "table"],
+            "properties": {
+              "schema": {
+                "type": "string"
+              },
+              "table": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "eventTriggers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "owner"],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "owner": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "excluded": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["extensionOwnedFunctions", "extensionOwnedRelations", "eventTriggers"],
+      "properties": {
+        "extensionOwnedFunctions": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "extensionOwnedRelations": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "eventTriggers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "reason"],
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "reason": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "storage": {
+      "description": "Supabase Storage: bucket settings and the rules of storage.objects. Absent when the storage schema does not exist or the document was written by an older version.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["buckets", "bucketsReadable", "bucketsFiltered", "objects"],
+      "properties": {
+        "buckets": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/bucket"
+          }
+        },
+        "bucketsReadable": {
+          "type": "boolean"
+        },
+        "bucketsFiltered": {
+          "type": "boolean"
+        },
+        "objects": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/table"
+            }
+          ]
+        }
+      }
+    }
+  }
+}

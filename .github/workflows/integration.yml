@@ -1,0 +1,89 @@
+name: Integration tests
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths-ignore:
+      - "**/*.md"
+      - LICENSE
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - "**/*.md"
+      - LICENSE
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  # Only cancel superseded PR runs; every push to main is checked to completion
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  integration:
+    name: Integration tests (local Supabase)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup pnpm and install dependencies
+        uses: ./.github/actions/setup-pnpm
+
+      - uses: supabase/setup-cli@45a513f8c64c0bc8e0e3dfe572b5c95be85f6359 # v3.0.1
+        with:
+          # Released at least 7 days ago, in line with minimumReleaseAge: 10080 in pnpm-workspace.yaml
+          version: 2.118.0
+
+      - name: Start a disposable local Supabase stack
+        id: start
+        # Storage stays enabled: the Storage tests need the tables and grants that storage-api creates
+        run: |
+          trap 'echo "Supabase start took ${SECONDS}s"' EXIT
+          workdir="$RUNNER_TEMP/rls-access-viewer-supabase"
+          echo "SUPABASE_WORKDIR=$workdir" >> "$GITHUB_ENV"
+          mkdir -p "$workdir"
+          supabase init --workdir "$workdir"
+          supabase start --workdir "$workdir" --exclude studio,realtime,edge-runtime,logflare,vector
+
+      - name: Export DATABASE_URL from supabase status
+        # Only the DB_URL line is kept; the rest of the output holds API keys and is never evaluated or printed
+        run: |
+          db_url="$(supabase status --workdir "$SUPABASE_WORKDIR" -o env | node --import tsx --input-type=module -e '
+            import { readFileSync } from "node:fs";
+            import { pickDbUrlFromStatusEnv } from "./src/extract/connection.ts";
+            process.stdout.write(pickDbUrlFromStatusEnv(readFileSync(0, "utf8")) ?? "");
+          ')"
+          if [ -z "$db_url" ]; then
+            echo "::error::supabase status printed no DB_URL"
+            exit 1
+          fi
+          echo "::add-mask::$db_url"
+          echo "DATABASE_URL=$db_url" >> "$GITHUB_ENV"
+
+      - name: Load the fixture
+        run: |
+          trap 'echo "Fixture load took ${SECONDS}s"' EXIT
+          node --import tsx test/integration/fixtures/load.ts
+
+      - name: Run the integration tests
+        run: |
+          trap 'echo "Integration tests took ${SECONDS}s"' EXIT
+          # The suite skips itself without DATABASE_URL, which would pass silently
+          if [ -z "${DATABASE_URL:-}" ]; then
+            echo "::error::DATABASE_URL is not set"
+            exit 1
+          fi
+          pnpm test:integration
+
+      - name: Stop Supabase
+        if: always() && steps.start.outcome != 'skipped'
+        run: supabase stop --workdir "$SUPABASE_WORKDIR" --no-backup
