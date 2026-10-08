@@ -48,6 +48,10 @@ run the same before pushing. Its `node-compat` matrix (Node.js 22.0.0 / 22 / 24 
 installed with npm and run) only runs in CI. `.github/workflows/integration.yml` runs `test:integration` against a
 disposable local Supabase stack with `test/integration/fixtures/ci.sql`, on pull requests and pushes to `main` that
 change more than Markdown files or `LICENSE`, and on manual dispatch (not a required check).
+`.github/workflows/release.yml` publishes to npm when a GitHub Release is published (tag `v<version>` must match
+`package.json`), after approval on the `npm` environment, via trusted publishing (OIDC, provenance; no `NPM_TOKEN`).
+Only its `publish` job gets `id-token: write`; it installs no project dependencies (only a pinned npm) and publishes
+the tarball packed by `build`.
 
 `pnpm-workspace.yaml` makes this a standalone pnpm root with `minimumReleaseAge: 10080` (packages newer than 7 days
 are refused) and dependency install scripts disabled; keep these when touching dependencies. The only runtime
