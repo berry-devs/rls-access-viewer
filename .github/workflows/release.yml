@@ -1,0 +1,175 @@
+name: Release
+
+on:
+  release:
+    types:
+      - published
+
+permissions:
+  contents: read
+
+concurrency:
+  # One group per tag: a single group keeps only one pending run, so a third release could cancel a waiting one
+  group: ${{ github.workflow }}-${{ github.event.release.tag_name }}
+  # Never cancel a publish that is already running
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build:
+    name: Check, build and pack
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # No id-token here: dependencies and dev tools run in this job, so they cannot request the OIDC token
+    permissions:
+      contents: read
+    outputs:
+      spec: ${{ steps.meta.outputs.spec }}
+      dist-tag: ${{ steps.meta.outputs.dist-tag }}
+      node-version: ${{ steps.meta.outputs.node-version }}
+      tarball: ${{ steps.pack.outputs.tarball }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Setup pnpm and install dependencies
+        uses: ./.github/actions/setup-pnpm
+
+      - name: Check the release against package.json and choose the dist-tag
+        id: meta
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+          PRERELEASE: ${{ github.event.release.prerelease }}
+        run: |
+          name="$(node -p 'require("./package.json").name')"
+          version="$(node -p 'require("./package.json").version')"
+          if [ "$TAG" != "v$version" ]; then
+            echo "::error::release tag $TAG does not match v$version from package.json"
+            exit 1
+          fi
+          # Both must agree: a version cannot be republished, so a mismatch would leave it under the wrong dist-tag
+          if [[ "$version" == *-* ]]; then
+            semver_prerelease=true
+          else
+            semver_prerelease=false
+          fi
+          if [ "$PRERELEASE" != "$semver_prerelease" ]; then
+            echo "::error::the Release pre-release flag ($PRERELEASE) does not match version $version"
+            exit 1
+          fi
+          if [ "$semver_prerelease" = "true" ]; then
+            dist_tag=next
+          else
+            dist_tag=latest
+          fi
+          echo "Publishing $name@$version with dist-tag $dist_tag"
+          {
+            echo "spec=$name@$version"
+            echo "dist-tag=$dist_tag"
+            echo "node-version=$(awk '$1 == "nodejs" { print $2 }' .tool-versions)"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Run ESLint
+        run: pnpm lint
+      - name: Run tsc
+        run: pnpm typecheck
+      - name: Run unit tests
+        run: pnpm test
+
+      - name: Build from a clean dist
+        run: |
+          rm -rf dist
+          pnpm build
+          if [ ! -s dist/cli.js ]; then
+            echo "::error::dist/cli.js was not generated"
+            exit 1
+          fi
+
+      - name: Pack and show the package contents
+        id: pack
+        # The tarball listed here is the one published, so prepublishOnly does not rebuild it
+        run: |
+          pnpm pack --dry-run
+          mkdir "$RUNNER_TEMP/package"
+          pnpm pack --pack-destination "$RUNNER_TEMP/package"
+          tarball="$(ls "$RUNNER_TEMP/package"/*.tgz)"
+          tar -tzvf "$tarball"
+          echo "tarball=$(basename "$tarball")" >> "$GITHUB_OUTPUT"
+
+      - name: Upload the tarball
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: package
+          path: ${{ runner.temp }}/package/${{ steps.pack.outputs.tarball }}
+          if-no-files-found: error
+          retention-days: 7
+
+  publish:
+    name: Publish to npm
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Required reviewers are configured on this environment; the npm trusted publisher is registered with its name
+    environment: npm
+    # Only the OIDC token for trusted publishing and provenance; no NPM_TOKEN is used. Nothing is checked out and no
+    # project dependency is installed (only a pinned npm), so only the steps below can request the token
+    permissions:
+      id-token: write
+    steps:
+      - name: Download the tarball
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: package
+          path: ${{ runner.temp }}/package
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: ${{ needs.build.outputs.node-version }}
+
+      - name: Install npm with trusted publishing support
+        # OIDC trusted publishing needs npm >= 11.5.1; pnpm publish is not documented to support it
+        run: |
+          npm install --global --ignore-scripts npm@11.20.0
+          npm --version
+
+      - name: Check whether this version is already on npm
+        id: published
+        # A version published by hand (e.g. the first release, made before the trusted publisher could be registered)
+        # is skipped instead of failing the job. Only "not found" counts as unpublished; other errors fail
+        env:
+          SPEC: ${{ needs.build.outputs.spec }}
+        run: |
+          set +e
+          out="$(npm view "$SPEC" version 2>"$RUNNER_TEMP/npm-view.err")"
+          code=$?
+          set -e
+          if [ "$code" -ne 0 ]; then
+            if grep -q "E404" "$RUNNER_TEMP/npm-view.err"; then
+              out=""
+            else
+              cat "$RUNNER_TEMP/npm-view.err" >&2
+              echo "::error::npm view $SPEC failed with exit code $code"
+              exit 1
+            fi
+          fi
+          # A missing version may be reported either as E404 or as success with empty output; both mean unpublished
+          if [ -n "$out" ]; then
+            echo "$SPEC is already published; skipping npm publish"
+            echo "::notice::$SPEC is already published on npm; npm publish was skipped"
+            echo "Skipped: \`$SPEC\` is already published on npm." >> "$GITHUB_STEP_SUMMARY"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "$SPEC is not published yet"
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Publish with provenance
+        if: steps.published.outputs.skip != 'true'
+        env:
+          TARBALL: ${{ runner.temp }}/package/${{ needs.build.outputs.tarball }}
+          DIST_TAG: ${{ needs.build.outputs.dist-tag }}
+        run: npm publish "$TARBALL" --provenance --access public --tag "$DIST_TAG"

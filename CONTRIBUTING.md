@@ -33,3 +33,23 @@ and 26. The integration suite runs in a separate workflow (`.github/workflows/in
 local Supabase stack started on the runner, with the fixture in `test/integration/fixtures/ci.sql`. It runs on pull
 requests and pushes to `main` (except changes to Markdown files or `LICENSE` only), and on manual dispatch; it is not a
 required check.
+
+## Releasing
+
+Publishing a GitHub Release runs `.github/workflows/release.yml`. A `build` job checks the Release, runs ESLint,
+typecheck and the unit tests, builds from a clean `dist` and packs the tarball. A separate `publish` job, which only
+has the OIDC token and installs no project dependencies, waits for approval on the `npm` environment and publishes
+that tarball (so `prepublishOnly` does not run) to npm with trusted publishing (OIDC, with provenance; no npm token is
+stored in the repository).
+
+The release tag must be `v<version>` matching `version` in `package.json`, and the Release must be marked as a
+pre-release exactly when the version contains `-`; otherwise the `build` job fails before anything is published.
+Pre-release versions are published under the `next` dist-tag, others under `latest`. If that version is already on
+npm (e.g. published by hand), the publish step is skipped and the job still succeeds.
+
+Runs for different tags are not serialized, so when several Releases are waiting for approval, approve them from the
+oldest version to the newest: an older version published after a newer one under `latest` moves `latest` back.
+
+## Security
+
+Report vulnerabilities privately as described in [SECURITY.md](SECURITY.md), not in public issues.

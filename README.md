@@ -223,7 +223,8 @@ Release notes are published on [GitHub Releases](https://github.com/berry-devs/r
 ## Contributing
 
 See [CONTRIBUTING.md](https://github.com/berry-devs/rls-access-viewer/blob/main/CONTRIBUTING.md) for the development
-setup, tests and CI.
+setup, tests and CI. To report a vulnerability, see
+[SECURITY.md](https://github.com/berry-devs/rls-access-viewer/blob/main/SECURITY.md).
 
 ## License
 
