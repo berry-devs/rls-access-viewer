@@ -134,7 +134,7 @@ jobs:
           ' "$RUNNER_TEMP/rules.json"
       # Switched only after install, build and pack: Node.js 25 and later no longer bundle Corepack, which provides pnpm
       - name: Switch to Node.js ${{ matrix.node }}
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: ${{ matrix.node }}
           # Without it the runner's cached version is used, which may lag behind the latest release of the line
